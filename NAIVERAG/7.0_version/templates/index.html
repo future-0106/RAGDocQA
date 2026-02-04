@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>多PDF智能检索系统</title>
+    <!-- 引入Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入Font Awesome图标 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- 自定义配置 -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3b82f6',
+                        secondary: '#64748b',
+                        success: '#10b981',
+                        danger: '#ef4444',
+                        neutral: '#f1f5f9',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .card-shadow {
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            }
+            .btn-hover {
+                @apply transition-all duration-200 hover:shadow-md hover:-translate-y-0.5;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- 顶部导航 -->
+    <header class="bg-white shadow-sm sticky top-0 z-10">
+        <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-2">
+                <i class="fa-solid fa-book-open text-primary text-2xl"></i>
+                <h1 class="text-xl font-bold text-gray-800">多PDF智能检索系统</h1>
+            </div>
+            <div id="current-model" class="bg-primary/10 px-3 py-1 rounded-full text-sm text-primary">
+                当前模型：加载中...
+            </div>
+        </div>
+    </header>
+
+    <!-- 主内容区 -->
+    <main class="container mx-auto px-4 py-6">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- 左侧：模型切换 + PDF上传 -->
+            <div class="lg:col-span-1 space-y-6">
+                <!-- 模型切换卡片 -->
+                <div class="bg-white rounded-lg card-shadow p-5">
+                    <h2 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                        <i class="fa-solid fa-cogs text-primary"></i>
+                        模型切换
+                    </h2>
+                    <div class="space-y-3">
+                        <select id="model-select" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary">
+                            <option value="">加载可用模型...</option>
+                        </select>
+                        <button id="switch-model-btn" class="w-full bg-primary text-white py-2 px-4 rounded-lg btn-hover flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-exchange-alt"></i>
+                            切换模型
+                        </button>
+                    </div>
+                </div>
+
+                <!-- PDF上传卡片 -->
+                <div class="bg-white rounded-lg card-shadow p-5">
+                    <h2 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                        <i class="fa-solid fa-upload text-primary"></i>
+                        PDF上传
+                    </h2>
+
+                    <!-- 文件上传 -->
+                    <div class="mb-5 space-y-3">
+                        <h3 class="text-sm font-medium text-gray-600">通过文件上传</h3>
+                        <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-primary transition-colors">
+                            <input type="file" id="pdf-file-upload" class="hidden" accept=".pdf" multiple>
+                            <label for="pdf-file-upload" class="cursor-pointer">
+                                <div class="space-y-2">
+                                    <i class="fa-solid fa-file-pdf text-3xl text-gray-400"></i>
+                                    <p class="text-sm text-gray-500">点击或拖拽PDF文件到此处</p>
+                                    <p class="text-xs text-gray-400">支持多文件上传</p>
+                                </div>
+                            </label>
+                        </div>
+                        <button id="upload-file-btn" class="w-full bg-success text-white py-2 px-4 rounded-lg btn-hover flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-cloud-upload-alt"></i>
+                            上传选中文件
+                        </button>
+                    </div>
+
+                    <!-- 路径上传 -->
+                    <div class="space-y-3">
+                        <h3 class="text-sm font-medium text-gray-600">通过本地路径上传</h3>
+                        <input type="text" id="pdf-path-input" placeholder="多个路径用英文逗号分隔，如：/docs/1.pdf,/docs/2.pdf"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary">
+                        <button id="upload-path-btn" class="w-full bg-secondary text-white py-2 px-4 rounded-lg btn-hover flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-folder-open"></i>
+                            上传指定路径PDF
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右侧：查询 + PDF管理 -->
+            <div class="lg:col-span-2 space-y-6">
+                <!-- 智能查询卡片 -->
+                <div class="bg-white rounded-lg card-shadow p-5">
+                    <h2 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                        <i class="fa-solid fa-comments text-primary"></i>
+                        智能查询
+                    </h2>
+                    <div class="space-y-3">
+                        <textarea id="query-input" placeholder="请输入您的问题..." rows="4"
+                                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary resize-none"></textarea>
+                        <button id="query-btn" class="w-full bg-primary text-white py-3 px-4 rounded-lg btn-hover flex items-center justify-center gap-2 text-lg">
+                            <i class="fa-solid fa-search"></i>
+                            检索并回答
+                        </button>
+                    </div>
+
+                    <!-- 回答结果 -->
+                    <div id="answer-container" class="mt-5 hidden">
+                        <h3 class="text-sm font-medium text-gray-600 mb-2">回答结果：</h3>
+                        <div id="answer-content" class="bg-gray-50 p-4 rounded-lg border border-gray-200 min-h-[100px] whitespace-pre-line">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PDF管理卡片 -->
+                <div class="bg-white rounded-lg card-shadow p-5">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                            <i class="fa-solid fa-file-manager text-primary"></i>
+                            PDF管理
+                        </h2>
+                        <button id="refresh-pdf-btn" class="text-primary text-sm flex items-center gap-1 btn-hover">
+                            <i class="fa-solid fa-refresh"></i>
+                            刷新列表
+                        </button>
+                    </div>
+
+                    <!-- PDF列表 -->
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead>
+                                <tr>
+                                    <th class="px-3 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">序号</th>
+                                    <th class="px-3 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">文件名</th>
+                                    <th class="px-3 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">大小(KB)</th>
+                                    <th class="px-3 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="pdf-list" class="bg-white divide-y divide-gray-200">
+                                <tr>
+                                    <td colspan="4" class="px-3 py-8 text-center text-gray-500">
+                                        <i class="fa-solid fa-spinner fa-spin mr-2"></i>加载PDF列表中...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- 清空按钮 -->
+                    <button id="clear-all-btn" class="mt-4 text-danger border border-danger/30 text-sm py-1 px-3 rounded-lg btn-hover flex items-center gap-1">
+                        <i class="fa-solid fa-trash"></i>
+                        清空所有PDF
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 提示弹窗 -->
+    <div id="toast" class="fixed bottom-5 right-5 px-4 py-3 rounded-lg shadow-lg transform translate-y-20 opacity-0 transition-all duration-300 z-50 flex items-center gap-2">
+        <i id="toast-icon" class="fa-solid fa-info-circle"></i>
+        <span id="toast-message">提示信息</span>
+    </div>
+
+    <script>
+        // 基础配置
+        const API_BASE_URL = 'http://127.0.0.1:8000';
+        let currentModel = '';
+        let availableModels = [];
+
+        // DOM元素
+        const elements = {
+            currentModelEl: document.getElementById('current-model'),
+            modelSelect: document.getElementById('model-select'),
+            switchModelBtn: document.getElementById('switch-model-btn'),
+            pdfFileUpload: document.getElementById('pdf-file-upload'),
+            uploadFileBtn: document.getElementById('upload-file-btn'),
+            pdfPathInput: document.getElementById('pdf-path-input'),
+            uploadPathBtn: document.getElementById('upload-path-btn'),
+            queryInput: document.getElementById('query-input'),
+            queryBtn: document.getElementById('query-btn'),
+            answerContainer: document.getElementById('answer-container'),
+            answerContent: document.getElementById('answer-content'),
+            pdfList: document.getElementById('pdf-list'),
+            refreshPdfBtn: document.getElementById('refresh-pdf-btn'),
+            clearAllBtn: document.getElementById('clear-all-btn'),
+            toast: document.getElementById('toast'),
+            toastIcon: document.getElementById('toast-icon'),
+            toastMessage: document.getElementById('toast-message')
+        };
+
+        // 工具函数
+        // 显示提示框
+        function showToast(message, type = 'info') {
+            const iconMap = {
+                success: 'fa-check-circle text-success',
+                error: 'fa-exclamation-circle text-danger',
+                info: 'fa-info-circle text-primary'
+            };
+            const bgMap = {
+                success: 'bg-success/90 text-white',
+                error: 'bg-danger/90 text-white',
+                info: 'bg-primary/90 text-white'
+            };
+
+            elements.toast.className = `fixed bottom-5 right-5 px-4 py-3 rounded-lg shadow-lg transform opacity-100 transition-all duration-300 z-50 flex items-center gap-2 ${bgMap[type]}`;
+            elements.toastIcon.className = `fa-solid ${iconMap[type]}`;
+            elements.toastMessage.textContent = message;
+
+            setTimeout(() => {
+                elements.toast.classList.remove('opacity-100');
+                elements.toast.classList.add('opacity-0', 'translate-y-20');
+            }, 3000);
+        }
+
+        // 显示加载状态
+        function showLoading(el) {
+            const originalText = el.innerHTML;
+            el.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-2"></i>处理中...`;
+            el.disabled = true;
+            return () => {
+                el.innerHTML = originalText;
+                el.disabled = false;
+            };
+        }
+
+        // API请求封装
+        async function requestApi(url, options = {}) {
+            try {
+                const response = await fetch(`${API_BASE_URL}${url}`, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...options.headers
+                    },
+                    ...options
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.detail || '请求失败');
+                }
+
+                return data;
+            } catch (error) {
+                showToast(error.message, 'error');
+                throw error;
+            }
+        }
+
+        // 初始化页面
+        async function initPage() {
+            try {
+                // 获取首页信息
+                const homeData = await requestApi('/');
+                availableModels = homeData.available_models;
+                currentModel = homeData.default_model;
+
+                // 更新模型信息
+                elements.currentModelEl.textContent = `当前模型：${currentModel}`;
+
+                // 填充模型选择下拉框
+                elements.modelSelect.innerHTML = availableModels.map(model =>
+                    `<option value="${model}" ${model === currentModel ? 'selected' : ''}>${model}</option>`
+                ).join('');
+
+                // 加载PDF列表
+                await loadPdfList();
+            } catch (error) {
+                console.error('初始化失败:', error);
+                showToast('初始化失败，请检查API服务是否运行', 'error');
+            }
+        }
+
+        // 加载PDF列表
+        async function loadPdfList() {
+            try {
+                elements.pdfList.innerHTML = '<tr><td colspan="4" class="px-3 py-8 text-center text-gray-500"><i class="fa-solid fa-spinner fa-spin mr-2"></i>加载PDF列表中...</td></tr>';
+
+                const data = await requestApi('/list_pdfs');
+
+                if (data.data.length === 0) {
+                    elements.pdfList.innerHTML = '<tr><td colspan="4" class="px-3 py-8 text-center text-gray-500">暂无上传的PDF文件</td></tr>';
+                    return;
+                }
+
+                elements.pdfList.innerHTML = data.data.map(item => `
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">${item.index}</td>
+                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-800">${item.pdf_name}</td>
+                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">${item.file_size_kb}</td>
+                        <td class="px-3 py-4 whitespace-nowrap text-sm">
+                            <button class="text-danger hover:text-danger/80 btn-hover" onclick="deletePdf('${item.pdf_path}')">
+                                <i class="fa-solid fa-trash mr-1"></i>删除
+                            </button>
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (error) {
+                elements.pdfList.innerHTML = '<tr><td colspan="4" class="px-3 py-8 text-center text-gray-500">加载失败，请重试</td></tr>';
+                console.error('加载PDF列表失败:', error);
+            }
+        }
+
+        // 切换模型
+        async function switchModel() {
+            const modelName = elements.modelSelect.value;
+            if (!modelName || modelName === currentModel) {
+                showToast('请选择不同的模型', 'info');
+                return;
+            }
+
+            const resetLoading = showLoading(elements.switchModelBtn);
+            try {
+                const formData = new FormData();
+                formData.append('model_name', modelName);
+
+                const response = await fetch(`${API_BASE_URL}/switch_model`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.detail || '切换模型失败');
+                }
+
+                currentModel = modelName;
+                elements.currentModelEl.textContent = `当前模型：${currentModel}`;
+                showToast(`成功切换至${modelName}`, 'success');
+            } catch (error) {
+                showToast(error.message, 'error');
+            } finally {
+                resetLoading();
+            }
+        }
+
+        // 上传文件
+        async function uploadFile() {
+            const files = elements.pdfFileUpload.files;
+            if (files.length === 0) {
+                showToast('请选择要上传的PDF文件', 'info');
+                return;
+            }
+
+            const resetLoading = showLoading(elements.uploadFileBtn);
+            try {
+                const formData = new FormData();
+                Array.from(files).forEach(file => {
+                    formData.append('files', file);
+                });
+
+                const response = await fetch(`${API_BASE_URL}/upload_pdf_by_file`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.detail || '上传失败');
+                }
+
+                // 显示上传结果
+                const successCount = data.data.filter(item => item.status === 'success').length;
+                const failCount = data.data.filter(item => item.status === 'failed').length;
+
+                showToast(`上传完成：成功${successCount}个，失败${failCount}个`, successCount > 0 ? 'success' : 'error');
+
+                // 重置文件选择框
+                elements.pdfFileUpload.value = '';
+
+                // 刷新PDF列表
+                await loadPdfList();
+            } catch (error) {
+                showToast(error.message, 'error');
+            } finally {
+                resetLoading();
+            }
+        }
+
+        // 上传路径
+        async function uploadPath() {
+            const pdfPaths = elements.pdfPathInput.value.trim();
+            if (!pdfPaths) {
+                showToast('请输入PDF路径', 'info');
+                return;
+            }
+
+            const resetLoading = showLoading(elements.uploadPathBtn);
+            try {
+                const formData = new FormData();
+                formData.append('pdf_paths', pdfPaths);
+
+                const response = await fetch(`${API_BASE_URL}/upload_pdf_by_path`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.detail || '上传失败');
+                }
+
+                // 显示上传结果
+                const successCount = data.data.filter(item => item.status === 'success').length;
+                const failCount = data.data.filter(item => item.status === 'failed').length;
+
+                showToast(`上传完成：成功${successCount}个，失败${failCount}个`, successCount > 0 ? 'success' : 'error');
+
+                // 清空输入框
+                elements.pdfPathInput.value = '';
+
+                // 刷新PDF列表
+                await loadPdfList();
+            } catch (error) {
+                showToast(error.message, 'error');
+            } finally {
+                resetLoading();
+            }
+        }
+
+        // 智能查询
+        async function query() {
+            const question = elements.queryInput.value.trim();
+            if (!question) {
+                showToast('请输入查询问题', 'info');
+                return;
+            }
+
+            const resetLoading = showLoading(elements.queryBtn);
+            try {
+                const formData = new FormData();
+                formData.append('question', question);
+
+                const response = await fetch(`${API_BASE_URL}/query`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.detail || '查询失败');
+                }
+
+                // 显示回答结果
+                elements.answerContainer.classList.remove('hidden');
+                elements.answerContent.textContent = data.data.answer;
+
+                showToast('查询成功', 'success');
+            } catch (error) {
+                showToast(error.message, 'error');
+            } finally {
+                resetLoading();
+            }
+        }
+
+        // 删除PDF
+        async function deletePdf(pdfPath) {
+            if (!confirm(`确定要删除PDF：${pdfPath.split('/').pop()}吗？`)) {
+                return;
+            }
+
+            try {
+                const formData = new FormData();
+                formData.append('pdf_path', pdfPath);
+
+                const response = await fetch(`${API_BASE_URL}/delete_pdf`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.detail || '删除失败');
+                }
+
+                showToast('删除成功', 'success');
+                await loadPdfList();
+            } catch (error) {
+                showToast(error.message, 'error');
+            }
+        }
+
+        // 清空所有PDF
+        async function clearAll() {
+            if (!confirm('确定要清空所有PDF数据吗？此操作不可恢复！')) {
+                return;
+            }
+
+            const resetLoading = showLoading(elements.clearAllBtn);
+            try {
+                const formData = new FormData();
+                formData.append('confirm', 'YES');
+
+                const response = await fetch(`${API_BASE_URL}/clear_all`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.detail || '清空失败');
+                }
+
+                showToast('已清空所有PDF数据', 'success');
+                await loadPdfList();
+
+                // 隐藏回答容器
+                elements.answerContainer.classList.add('hidden');
+            } catch (error) {
+                showToast(error.message, 'error');
+            } finally {
+                resetLoading();
+            }
+        }
+
+        // 绑定事件
+        function bindEvents() {
+            // 切换模型
+            elements.switchModelBtn.addEventListener('click', switchModel);
+
+            // 上传文件
+            elements.uploadFileBtn.addEventListener('click', uploadFile);
+
+            // 上传路径
+            elements.uploadPathBtn.addEventListener('click', uploadPath);
+
+            // 智能查询
+            elements.queryBtn.addEventListener('click', query);
+
+            // 刷新PDF列表
+            elements.refreshPdfBtn.addEventListener('click', loadPdfList);
+
+            // 清空所有PDF
+            elements.clearAllBtn.addEventListener('click', clearAll);
+
+            // 按回车查询
+            elements.queryInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    query();
+                }
+            });
+        }
+
+        // 全局暴露删除函数
+        window.deletePdf = deletePdf;
+
+        // 初始化
+        window.onload = async () => {
+            bindEvents();
+            await initPage();
+        };
+    </script>
+</body>
+</html>
