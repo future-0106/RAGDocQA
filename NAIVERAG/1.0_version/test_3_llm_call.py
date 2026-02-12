@@ -1,7 +1,8 @@
-"""测试3：验证阿里百炼LLM API调用（OpenAI兼容模式）"""
+"""测试3：验证阿里百炼LLM API调用（OpenAI兼容模式）- 流式输出+思考过程版"""
 import os
 import dotenv
 from openai import OpenAI
+
 
 # -------------------------- 核心配置说明 --------------------------
 # 方式1：直接在代码中配置（测试用）
@@ -13,40 +14,61 @@ from openai import OpenAI
 # DASHSCOPE_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 # DASHSCOPE_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
 
-def test_dashscope_openai_compatible():
+def test_dashscope_openai_compatible_stream():
     try:
         # 加载.env文件（优先读取环境变量）
         dotenv.load_dotenv()
 
-        # 映射到OpenAI风格的环境变量（核心：按你的要求配置）
-        os.environ["OPENAI_API_KEY"] = os.getenv("DASHSCOPE_API_KEY")
-        os.environ["OPENAI_BASE_URL"] = os.getenv("DASHSCOPE_BASE_URL")
+        # 获取配置并验证
+        api_key = os.getenv("DASHSCOPE_API_KEY")
+        base_url = os.getenv("DASHSCOPE_BASE_URL") or "https://dashscope.aliyuncs.com/compatible-mode/v1"
 
-        # 验证环境变量是否配置
-        if not os.environ.get("OPENAI_API_KEY"):
+        if not api_key:
             raise ValueError("未配置DASHSCOPE_API_KEY环境变量，请检查.env文件或代码配置")
-        if not os.environ.get("OPENAI_BASE_URL"):
-            raise ValueError("未配置DASHSCOPE_BASE_URL环境变量，请检查.env文件或代码配置")
 
-        # 初始化OpenAI客户端（自动读取OPENAI_API_KEY和OPENAI_BASE_URL）
-        client = OpenAI()
-
-        # 调用阿里百炼Qwen-turbo（OpenAI兼容格式）
-        completion = client.chat.completions.create(
-            model="qwen-turbo",  # 阿里百炼支持的模型名：qwen-turbo/qwen-plus/qwen-max等
-            messages=[
-                {"role": "system", "content": "你是一个友好的助手，仅用于测试API调用"},
-                {"role": "user", "content": "你好，测试一下是否能正常回答"}
-            ],
-            temperature=0,  # 固定输出，便于测试
-            max_tokens=1024
+        # 初始化OpenAI客户端（指定阿里百炼配置）
+        client = OpenAI(
+            api_key=api_key,
+            base_url=base_url,
         )
 
-        # 输出结果
-        print("✅ 阿里百炼LLM（OpenAI兼容模式）调用成功！")
-        print(f"📌 模型名称：{completion.model}")
-        print(f"📌 回答内容：{completion.choices[0].message.content.strip()}")
-        print(f"📌 消耗Token：{completion.usage.total_tokens}")
+        # 构建请求消息
+        messages = [
+            {"role": "system", "content": "你是一个友好的助手，仅用于测试API调用"},
+            {"role": "user", "content": "你是谁，介绍一下自己"}
+        ]
+
+        # 调用阿里百炼Qwen-turbo（流式+思考过程）
+        print("🚀 开始调用阿里百炼LLM（流式输出+思考过程）...")
+        completion = client.chat.completions.create(
+            model="qwen-turbo",  # 支持qwen-turbo/qwen-plus/qwen-max等
+            messages=messages,
+            temperature=0,
+            max_tokens=1024,
+            extra_body={"enable_thinking": True},  # 开启思考过程
+            stream=True  # 流式输出
+        )
+
+        # 解析流式响应
+        is_answering = False  # 是否进入回复阶段
+        print("\n" + "=" * 20 + "思考过程" + "=" * 20)
+
+        for chunk in completion:
+            delta = chunk.choices[0].delta
+            # 处理思考过程内容
+            if hasattr(delta, "reasoning_content") and delta.reasoning_content is not None:
+                if not is_answering:
+                    print(delta.reasoning_content, end="", flush=True)
+            # 处理正式回复内容
+            if hasattr(delta, "content") and delta.content:
+                if not is_answering:
+                    print("\n" + "=" * 20 + "完整回复" + "=" * 20)
+                    is_answering = True
+                print(delta.content, end="", flush=True)
+
+        # 输出结束信息
+        print("\n" + "=" * 45)
+        print("✅ 阿里百炼LLM（流式+思考过程）调用成功！")
 
     except ValueError as e:
         print(f"❌ 配置错误：{str(e)}")
@@ -58,15 +80,24 @@ def test_dashscope_openai_compatible():
         print("   3. 网络问题：确保能访问阿里百炼接口（国内网络无需翻墙）")
         print("   4. API额度不足：登录阿里百炼控制台（https://dashscope.console.aliyun.com/）检查额度")
         print("   5. 依赖缺失：执行pip install openai --upgrade安装最新版openai库")
+        print("   6. 思考过程仅支持：qwen-turbo/qwen-plus/qwen-max等新版模型")
+
 
 if __name__ == "__main__":
-    # 先安装依赖提示（首次运行）
+    # 检查依赖
     try:
         import openai
-        print(f"📌 OpenAI库版本：{openai.__version__} (要求≥1.0.0)")
+
+        openai_version = openai.__version__
+        print(f"📌 OpenAI库版本：{openai_version} (要求≥1.0.0)")
+        # 版本检查
+        version_parts = openai_version.split('.')
+        if int(version_parts[0]) < 1:
+            print("⚠️ OpenAI库版本过低，执行：pip install openai --upgrade")
+            exit(1)
     except ImportError:
         print("⚠️ 未安装openai库，执行：pip install openai --upgrade")
         exit(1)
 
     # 运行测试
-    test_dashscope_openai_compatible()
+    test_dashscope_openai_compatible_stream()

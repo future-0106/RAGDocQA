@@ -1,46 +1,3 @@
-# """测试4：验证PDF加载与分割"""
-# from langchain_community.document_loaders import PyPDFLoader
-# from langchain_text_splitters import RecursiveCharacterTextSplitter
-#
-# # -------------------------- 配置项（修改为你的PDF路径） --------------------------
-# PDF_PATH = "Harry Potter - Book 1 - The Sorcerers Stone.pdf"  # 你的PDF文件路径
-#
-# def test_pdf_process():
-#     try:
-#         # 加载PDF
-#         loader = PyPDFLoader(PDF_PATH)
-#         docs = loader.load()
-#         print(f"✅ PDF加载成功！共加载 {len(docs)} 页")
-#
-#         # 分割PDF
-#         text_splitter = RecursiveCharacterTextSplitter(
-#             chunk_size=500,
-#             chunk_overlap=50,
-#             separators=["\n\n", "\n", "。", "！", "？", "，", "；", " ", ""]
-#         )
-#         splits = text_splitter.split_documents(docs)
-#         print(f"✅ PDF分割成功！共生成 {len(splits)} 个文本片段")
-#         print(f"📌 第一个片段内容：{splits[0].page_content[:100]}...")
-#
-#     except FileNotFoundError:
-#         print(f"❌ PDF文件不存在：{PDF_PATH}")
-#         print("💡 检查PDF路径是否正确")
-#     except Exception as e:
-#         print(f"❌ PDF处理失败：{str(e)}")
-#         print("\n💡 解决方法：")
-#         print("   1. 安装pypdf：pip install pypdf")
-#         print("   2. 确保PDF文件未损坏")
-#
-# if __name__ == "__main__":
-#     test_pdf_process()
-
-
-
-
-
-
-
-
 """测试4：PDF加载与分割（适配langchain 0.2.x，解决中文乱码）"""
 import os
 import re
@@ -58,7 +15,7 @@ except ImportError as e:
     exit(1)
 
 # -------------------------- 核心配置（必须修改为你的PDF路径） --------------------------
-PDF_FILE_PATH = r"1958年消除就业和职业歧视公约.pdf"  # 替换为实际PDF路径
+PDF_FILE_PATH = r"D:\projects\fastapi_langchain_env\NAIVERAG\datas\1958年消除就业和职业歧视公约.pdf"  # 替换为实际PDF路径
 CHUNK_SIZE = 500  # 每个片段字符数
 CHUNK_OVERLAP = 50  # 片段重叠字符数
 

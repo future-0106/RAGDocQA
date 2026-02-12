@@ -5,7 +5,14 @@ import torch
 import pdfplumber
 from typing import List, Optional
 from langchain_core.documents import Document
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+
+# ========== 修复导入：兼容新旧版本 ==========
+try:
+    from langchain_text_splitters import RecursiveCharacterTextSplitter
+    print("✅ 使用 langchain_text_splitters.RecursiveCharacterTextSplitter")
+except ImportError:
+    from langchain.text_splitter import RecursiveCharacterTextSplitter
+    print("✅ 使用 langchain.text_splitter.RecursiveCharacterTextSplitter (旧版本)")
 
 # ========== 核心修复1：提前禁用OneDNN，解决PaddleOCR运行报错 ==========
 # 禁用OneDNN加速，避免Filter输入缺失错误

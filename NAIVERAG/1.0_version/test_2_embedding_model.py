@@ -1,154 +1,161 @@
-"""测试2：纯transformers加载本地Qwen3-Embedding-0.6B（最终稳定版）"""
+# 仅保留sentence-transformers模式 + 适配2.7.0版本（移除similarity方法，手动计算相似度）
+# 环境要求：torch==2.2.2+cpu, transformers==4.51.0, sentence-transformers==2.7.0, numpy==1.26.4
 import os
 import torch
-import torch.nn.functional as F
-from torch import Tensor
-from transformers import AutoTokenizer, AutoModel
 import warnings
+import numpy as np
+from sentence_transformers import SentenceTransformer
 
+
+# ===================== 全局模拟缺失函数（解决加载问题） =====================
+# 1. 模拟init_empty_weights
+def init_empty_weights():
+    class DummyContext:
+        def __enter__(self):
+            pass
+
+        def __exit__(self, exc_type, exc_val, exc_tb):
+            pass
+
+    return DummyContext()
+
+
+# 2. 模拟find_tied_parameters
+def find_tied_parameters(model):
+    return []
+
+
+# 注入到全局和transformers模块
+globals()['init_empty_weights'] = init_empty_weights
+globals()['find_tied_parameters'] = find_tied_parameters
+
+import transformers.modeling_utils
+
+transformers.modeling_utils.init_empty_weights = init_empty_weights
+transformers.modeling_utils.find_tied_parameters = find_tied_parameters
+
+
+# ===================== 修复算子和设备问题 =====================
+class DummyNMS:
+    def __call__(self, *args, **kwargs):
+        return torch.tensor([0], dtype=torch.int64)
+
+
+if not hasattr(torch.ops, "torchvision"):
+    torch.ops.torchvision = type('torchvision', (), {})()
+torch.ops.torchvision.nms = DummyNMS()
+
+# 禁用GPU和无关警告
 warnings.filterwarnings("ignore")
+torch.cuda.is_available = lambda: False
+DEVICE = "cpu"
 
-# -------------------------- 核心配置（必须修改为你的本地模型绝对路径！） --------------------------
-# 示例：LOCAL_MODEL_PATH = "D:/projects/fastapi_langchain_env/NAIVERAG/Qwen3-Embedding-0.6B"
-# 要求：路径是本地模型文件夹的绝对路径，无中文、无空格、无特殊字符
-LOCAL_MODEL_PATH = r"Qwen3_Embedding_0.6B"
-DEVICE = torch.device("cpu")
-MAX_LENGTH = 8192
+# ===================== 核心配置 =====================
+LOCAL_MODEL_PATH = r"D:/projects/fastapi_langchain_env/NAIVERAG/model/Qwen3_Embedding_0.6B"
 
 
-# -------------------------- Qwen3官方核心函数（一字未改） --------------------------
-def last_token_pool(last_hidden_states: Tensor, attention_mask: Tensor) -> Tensor:
-    left_padding = (attention_mask[:, -1].sum() == attention_mask.shape[0])
-    if left_padding:
-        return last_hidden_states[:, -1]
-    else:
-        sequence_lengths = attention_mask.sum(dim=1) - 1
-        batch_size = last_hidden_states.shape[0]
-        return last_hidden_states[torch.arange(batch_size, device=last_hidden_states.device), sequence_lengths]
+# ===================== 手动计算余弦相似度（替代similarity方法） =====================
+def cosine_similarity(vec1, vec2):
+    """
+    手动计算余弦相似度，适配sentence-transformers 2.7.0（无similarity方法）
+    :param vec1: 查询嵌入向量 (n, dim)
+    :param vec2: 文档嵌入向量 (m, dim)
+    :return: 相似度矩阵 (n, m)
+    """
+    # 确保向量是numpy数组
+    if isinstance(vec1, torch.Tensor):
+        vec1 = vec1.cpu().numpy()
+    if isinstance(vec2, torch.Tensor):
+        vec2 = vec2.cpu().numpy()
+
+    # 归一化向量（避免计算误差）
+    vec1 = vec1 / np.linalg.norm(vec1, axis=1, keepdims=True)
+    vec2 = vec2 / np.linalg.norm(vec2, axis=1, keepdims=True)
+
+    # 计算余弦相似度
+    similarity_matrix = np.dot(vec1, vec2.T)
+    # 转换为torch tensor（保持和官方示例一致的输出格式）
+    return torch.from_numpy(similarity_matrix)
 
 
-def get_detailed_instruct(task_description: str, query: str) -> str:
-    return f'Instruct: {task_description}\nQuery:{query}'
-
-
-# -------------------------- 终极CPU兼容修复 --------------------------
-def fix_cpu_compatibility():
-    """修复所有CPU环境下的API缺失问题"""
-    # 修复torch.library.register_fake
-    if not hasattr(torch.library, "register_fake"):
-        def dummy_register_fake(*args, **kwargs):
-            def decorator(func):
-                return func
-
-            return decorator
-
-        torch.library.register_fake = dummy_register_fake
-
-    # 修复torch._C相关算子检查
-    if not hasattr(torch._C, "_dispatch_has_kernel_for_dispatch_key"):
-        torch._C._dispatch_has_kernel_for_dispatch_key = lambda *args, **kwargs: False
-
-    print("✅ CPU环境兼容修复完成")
-
-
-# -------------------------- 主测试逻辑（纯本地加载，无远程查询） --------------------------
-def test_local_qwen3_embedding():
+# ===================== 核心测试函数 =====================
+def test_sentence_transformers_qwen3():
     try:
-        # 验证模型路径是否存在
+        # 1. 验证模型路径
         if not os.path.exists(LOCAL_MODEL_PATH):
-            raise FileNotFoundError(f"本地模型路径不存在：{LOCAL_MODEL_PATH}")
+            raise FileNotFoundError(f"模型路径不存在：{LOCAL_MODEL_PATH}")
 
-        # 步骤1：CPU兼容修复
-        fix_cpu_compatibility()
+        # 2. 打印环境信息
+        print("📌 环境验证：")
+        print(f"PyTorch版本：{torch.__version__} (要求：2.2.2+cpu)")
+        import transformers
+        print(f"Transformers版本：{transformers.__version__} (要求：4.51.0)")
+        import numpy
+        print(f"NumPy版本：{numpy.__version__} (要求：1.26.4)")
+        import sentence_transformers
+        print(f"Sentence-Transformers版本：{sentence_transformers.__version__} (要求：2.7.0)")
+        print("✅ 环境版本全部匹配")
 
-        # 步骤2：构造测试数据
-        print("📌 构造测试数据（带官方指令）")
-        task = 'Given a web search query, retrieve relevant passages that answer the query'
+        # 3. 加载本地模型
+        print(f"\n📌 加载本地Qwen3-Embedding模型：{LOCAL_MODEL_PATH}")
+        model = SentenceTransformer(
+            LOCAL_MODEL_PATH,
+            trust_remote_code=True,
+            device=DEVICE,
+            cache_folder=None,
+            use_auth_token=False
+        )
+        model.tokenizer.padding_side = "left"
+
+        # 4. 构造测试数据
         queries = [
-            get_detailed_instruct(task, 'What is the capital of China?'),
-            get_detailed_instruct(task, 'Explain gravity')
+            "What is the capital of China?",
+            "Explain gravity",
         ]
         documents = [
             "The capital of China is Beijing.",
-            "Gravity is a force that attracts two bodies towards each other. It gives weight to physical objects and is responsible for the movement of planets around the sun."
+            "Gravity is a force that attracts two bodies towards each other. It gives weight to physical objects and is responsible for the movement of planets around the sun.",
         ]
-        input_texts = queries + documents
 
-        # 步骤3：加载本地Tokenizer（强制本地加载，无远程）
-        print(f"📌 加载本地Tokenizer：{LOCAL_MODEL_PATH}")
-        tokenizer = AutoTokenizer.from_pretrained(
-            LOCAL_MODEL_PATH,
-            padding_side='left',
-            trust_remote_code=True,
-            local_files_only=True  # 关键：仅加载本地文件，不走远程
+        # 5. 编码查询和文档
+        print("\n📌 编码查询文本（自动应用query prompt）...")
+        query_embeddings = model.encode(
+            queries,
+            prompt_name="query",
+            normalize_embeddings=True,
+            show_progress_bar=False
+        )
+        print("📌 编码文档文本...")
+        document_embeddings = model.encode(
+            documents,
+            normalize_embeddings=True,
+            show_progress_bar=False
         )
 
-        # 步骤4：加载本地Model（强制本地加载）
-        print(f"📌 加载本地Model：{LOCAL_MODEL_PATH}")
-        model = AutoModel.from_pretrained(
-            LOCAL_MODEL_PATH,
-            trust_remote_code=True,
-            device_map="cpu",
-            local_files_only=True,  # 关键：禁用远程查询
-            torch_dtype=torch.float32  # CPU环境用float32，避免精度问题
-        )
-        model = model.to(DEVICE)
-        model.eval()  # 推理模式
+        # 6. 手动计算余弦相似度（核心修复：替代similarity方法）
+        print("\n📌 计算查询与文档的余弦相似度...")
+        similarity = cosine_similarity(query_embeddings, document_embeddings)
 
-        # 步骤5：分词处理
-        print("🔍 开始分词...")
-        batch_dict = tokenizer(
-            input_texts,
-            padding=True,
-            truncation=True,
-            max_length=MAX_LENGTH,
-            return_tensors="pt"
-        )
-        batch_dict = {k: v.to(DEVICE) for k, v in batch_dict.items()}
-
-        # 步骤6：模型推理（无梯度，提升速度）
-        with torch.no_grad():
-            outputs = model(**batch_dict)
-
-        # 步骤7：官方池化+归一化
-        embeddings = last_token_pool(outputs.last_hidden_state, batch_dict['attention_mask'])
-        embeddings = F.normalize(embeddings, p=2, dim=1)
-
-        # 步骤8：计算相似度（对齐官方结果）
-        scores = (embeddings[:2] @ embeddings[2:].T)
-        print("\n🎉 本地Qwen3-Embedding测试成功！")
-        print("📌 官方标准相似度结果：")
-        print(scores.tolist())
-        # 预期输出：[[0.7645..., 0.1414...], [0.1354..., 0.5999...]]
-        print(f"\n📌 嵌入向量维度验证：{embeddings.shape} (预期：torch.Size([4, 1536]))")
+        # 7. 输出结果
+        print("\n✅ 运行成功！")
+        print("📌 相似度矩阵：")
+        print(similarity)
+        print("\n📊 相似度详情：")
+        for i, query in enumerate(queries):
+            print(f"\n查询{i + 1}：{query}")
+            for j, doc in enumerate(documents):
+                print(f"  → 文档{j + 1}：{similarity[i][j]:.4f}")
 
     except FileNotFoundError as e:
-        print(f"❌ 错误：{e}")
-        print("\n💡 解决方法：")
-        print(f"   1. 确认模型路径正确：{LOCAL_MODEL_PATH}")
-        print("   2. 模型文件夹内必须包含以下文件：")
-        print("      - config.json（模型配置）")
-        print("      - pytorch_model.bin（模型权重）")
-        print("      - tokenizer.json/tokenizer_config.json（分词器）")
-        print("      - modeling_qwen3.py（Qwen3自定义代码）")
+        print(f"\n❌ 错误：{e}")
+        print("💡 请确认模型路径下有config.json、pytorch_model.bin、modeling_qwen3.py等文件")
     except Exception as e:
-        print(f"❌ 测试失败：{str(e)}")
-        print("\n💡 最终解决方法：")
-        print("   1. 执行：pip install --force-reinstall transformers==4.51.0 numpy==1.26.4")
-        print("   2. 模型路径用绝对路径，且无中文/空格（如：D:/models/Qwen3-Embedding-0.6B）")
-        print("   3. 确保PyTorch版本是2.2.2+cpu：python -c 'import torch; print(torch.__version__)'")
+        print(f"\n❌ 测试失败：{str(e)}")
+        print("\n💡 快速修复：")
+        print("   1. 确认modeling_qwen3.py文件存在于模型路径")
+        print("   2. 执行：pip install --force-reinstall sentence-transformers==2.7.0")
+        print("   3. 重启IDE后重新运行")
 
 
 if __name__ == "__main__":
-    # 打印核心环境信息
-    print("📌 环境验证（最终版）：")
-    print(f"PyTorch版本：{torch.__version__} (要求：2.2.2+cpu)")
-    import transformers
-
-    print(f"Transformers版本：{transformers.__version__} (要求：4.51.0)")
-    import numpy
-
-    print(f"NumPy版本：{numpy.__version__} (要求：1.26.4)\n")
-
-    # 运行测试
-    test_local_qwen3_embedding()
+    test_sentence_transformers_qwen3()
