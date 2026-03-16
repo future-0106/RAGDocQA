@@ -88,19 +88,22 @@ DECOMPOSE_PROMPT = ""           # 子问题分解
 # ===== 统一模型管理配置 =====
 ALL_MODELS = {
     # 阿里百炼API模型
-    "dashscope-qwen-turbo": {
+    "dashscope-qwen-plus": {
         "type": "api",
         "provider": "dashscope",
         "class": "DashScopeChatModel",
         "params": {
-            "model_name": "qwen-turbo",
+            "model_name": "qwen3.5-plus",
             "api_key": os.getenv("DASHSCOPE_API_KEY", ""),
             "temperature": 0.3,
             "max_tokens": 1500,
             "top_p": 0.9,
         },
-        "description": "阿里云千问Turbo模型，速度快"
+        "description": "阿里云千问plus模型，速度快"
     },
+
+
+
 
 
 
