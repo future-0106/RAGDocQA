@@ -101,19 +101,10 @@ ALL_MODELS = {
         },
         "description": "阿里云千问plus模型，速度快"
     },
-    # ModelScope - 微调法律模型
-    "modelscope-qwen2.5-7b-law": {
-        "type": "api",
-        "provider": "modelscope",
-        "class": "ModelScopeChatModel",
-        "params": {
-            "model_name": "future12/qwen2.5_7b_law",
-            "api_key": os.getenv("MODELSCOPE_API_KEY", ""),
-            "temperature": 0.3,
-            "max_tokens": 1500
-        },
-        "description": "微调 Qwen2.5-7B 法律模型"
-    },
+
+
+
+
 
 
 
