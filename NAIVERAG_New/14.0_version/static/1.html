@@ -1,0 +1,1644 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>统一模型管理RAG系统 - 前端界面</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <style>
+        :root {
+            --primary-color: #4361ee;
+            --secondary-color: #3a0ca3;
+            --success-color: #4cc9f0;
+            --light-bg: #f8f9fa;
+            --dark-bg: #212529;
+        }
+
+        body {
+            background-color: #f5f7fb;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .sidebar {
+            background: linear-gradient(180deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            color: white;
+            min-height: 100vh;
+            box-shadow: 3px 0 15px rgba(0,0,0,0.1);
+        }
+
+        .sidebar .nav-link {
+            color: rgba(255,255,255,0.8);
+            padding: 12px 20px;
+            margin: 5px 0;
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+
+        .sidebar .nav-link:hover, .sidebar .nav-link.active {
+            background-color: rgba(255,255,255,0.1);
+            color: white;
+            transform: translateX(5px);
+        }
+
+        .sidebar .nav-link i {
+            margin-right: 10px;
+            width: 20px;
+            text-align: center;
+        }
+
+        .card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+            transition: transform 0.3s;
+            margin-bottom: 20px;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+        }
+
+        .card-header {
+            background-color: white;
+            border-bottom: 1px solid #eaeaea;
+            border-radius: 15px 15px 0 0 !important;
+            padding: 15px 20px;
+        }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+
+        .status-online { background-color: #28a745; }
+        .status-offline { background-color: #dc3545; }
+        .status-warning { background-color: #ffc107; }
+
+        .chat-message {
+            padding: 12px 15px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            max-width: 80%;
+            word-wrap: break-word;
+        }
+
+        .user-message {
+            background-color: var(--primary-color);
+            color: white;
+            margin-left: auto;
+        }
+
+        .assistant-message {
+            background-color: #e9ecef;
+            color: #333;
+        }
+
+        .message-time {
+            font-size: 0.8rem;
+            color: #6c757d;
+            margin-top: 5px;
+        }
+
+        .file-card {
+            border-left: 4px solid var(--primary-color);
+            padding: 15px;
+        }
+
+        .progress-bar {
+            background: linear-gradient(90deg, var(--primary-color) 0%, var(--success-color) 100%);
+        }
+
+        .model-card {
+            border: 2px solid #eaeaea;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .model-card:hover {
+            border-color: var(--primary-color);
+            background-color: rgba(67, 97, 238, 0.05);
+        }
+
+        .model-card.selected {
+            border-color: var(--primary-color);
+            background-color: rgba(67, 97, 238, 0.1);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 500;
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, var(--secondary-color) 0%, var(--primary-color) 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(67, 97, 238, 0.3);
+        }
+
+        #chatContainer {
+            height: 400px;
+            overflow-y: auto;
+            padding: 15px;
+            background-color: white;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .source-item {
+            padding: 10px;
+            border-left: 3px solid var(--primary-color);
+            background-color: #f8f9fa;
+            margin-bottom: 10px;
+            border-radius: 0 5px 5px 0;
+        }
+
+        .tab-content {
+            padding: 20px;
+            background-color: white;
+            border-radius: 0 0 10px 10px;
+        }
+
+        .nav-tabs {
+            border-bottom: 2px solid #eaeaea;
+        }
+
+        .nav-tabs .nav-link {
+            border: none;
+            color: #6c757d;
+            font-weight: 500;
+            padding: 10px 20px;
+        }
+
+        .nav-tabs .nav-link.active {
+            color: var(--primary-color);
+            border-bottom: 3px solid var(--primary-color);
+            background-color: transparent;
+        }
+
+        .upload-area {
+            border: 2px dashed #ced4da;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            background-color: #f8f9fa;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .upload-area:hover {
+            border-color: var(--primary-color);
+            background-color: rgba(67, 97, 238, 0.05);
+        }
+
+        .upload-area.dragover {
+            border-color: var(--primary-color);
+            background-color: rgba(67, 97, 238, 0.1);
+        }
+
+        .stat-card {
+            text-align: center;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card i {
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+
+        .stat-card .number {
+            font-size: 2.5rem;
+            font-weight: bold;
+        }
+
+        .stat-card .label {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+
+        .badge-model {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                min-height: auto;
+                margin-bottom: 20px;
+            }
+
+            .chat-message {
+                max-width: 90%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar navbar-expand-lg navbar-dark" style="background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">
+                <i class="bi bi-robot"></i> 统一模型管理RAG系统
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/api/docs" target="_blank">
+                            <i class="bi bi-file-text"></i> API文档
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="https://github.com" target="_blank">
+                            <i class="bi bi-github"></i> GitHub
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid">
+        <div class="row">
+            <!-- 侧边栏 -->
+            <div class="col-lg-3 col-md-4 p-0">
+                <div class="sidebar p-4">
+                    <h4 class="mb-4"><i class="bi bi-menu-app"></i> 功能菜单</h4>
+                    <ul class="nav flex-column">
+                        <li class="nav-item">
+                            <a class="nav-link active" href="#" onclick="showTab('chat')">
+                                <i class="bi bi-chat-dots"></i> 智能问答
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" onclick="showTab('upload')">
+                                <i class="bi bi-upload"></i> 文件上传
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" onclick="showTab('files')">
+                                <i class="bi bi-folder"></i> 文件管理
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" onclick="showTab('models')">
+                                <i class="bi bi-cpu"></i> 模型管理
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" onclick="showTab('status')">
+                                <i class="bi bi-speedometer2"></i> 系统状态
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" onclick="showTab('history')">
+                                <i class="bi bi-clock-history"></i> 查询历史
+                            </a>
+                        </li>
+                    </ul>
+
+                    <hr class="bg-light my-4">
+
+                    <div class="mt-4">
+                        <h6><i class="bi bi-info-circle"></i> 系统信息</h6>
+                        <div class="small">
+                            <div id="systemInfo">
+                                <p class="mb-1">正在加载系统信息...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 主内容区 -->
+            <div class="col-lg-9 col-md-8 p-4">
+                <!-- 智能问答标签页 -->
+                <div id="chatTab" class="tab-content">
+                    <h3 class="mb-4"><i class="bi bi-chat-dots text-primary"></i> 智能问答</h3>
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">基于文档内容的问答系统</h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="chatContainer">
+                                <div class="chat-message assistant-message">
+                                    您好！我是您的智能文档助手。我已经加载了文档知识库，可以回答基于文档内容的问题。
+                                    <div class="message-time">系统消息</div>
+                                </div>
+                            </div>
+
+                            <div class="input-group mb-3">
+                                <input type="text" id="questionInput" class="form-control" placeholder="请输入您的问题..." onkeypress="handleKeyPress(event)">
+                                <button class="btn btn-primary" type="button" onclick="askQuestion()">
+                                    <i class="bi bi-send"></i> 发送
+                                </button>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="kInput">返回文档数量：</label>
+                                <input type="number" id="kInput" class="form-control" value="4" min="1" max="10">
+                            </div>
+
+                            <div id="sourcesSection" class="mt-4" style="display: none;">
+                                <h6>参考来源：</h6>
+                                <div id="sourcesList"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 文件上传标签页 -->
+                <div id="uploadTab" class="tab-content" style="display: none;">
+                    <h3 class="mb-4"><i class="bi bi-upload text-primary"></i> 文件上传</h3>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="mb-0">单文件上传</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="upload-area" id="singleUploadArea" onclick="document.getElementById('singleFileInput').click()">
+                                        <i class="bi bi-cloud-upload" style="font-size: 3rem; color: #4361ee;"></i>
+                                        <p class="mt-3">点击选择文件或拖放到此处</p>
+                                        <p class="small text-muted">支持 PDF、TXT、MD、Word、Excel 格式</p>
+                                    </div>
+                                    <input type="file" id="singleFileInput" style="display: none;" accept=".pdf,.txt,.md,.docx,.xlsx,.xls" onchange="uploadSingleFile(this.files[0])">
+
+                                    <div class="progress mt-3" id="uploadProgress" style="display: none;">
+                                        <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+                                    </div>
+
+                                    <div id="uploadResult" class="mt-3"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="mb-0">批量上传</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="upload-area" id="batchUploadArea" onclick="document.getElementById('batchFileInput').click()">
+                                        <i class="bi bi-folder-plus" style="font-size: 3rem; color: #4361ee;"></i>
+                                        <p class="mt-3">点击选择多个文件或拖放到此处</p>
+                                        <p class="small text-muted">支持 PDF、TXT、MD、Word、Excel 格式</p>
+                                    </div>
+                                    <input type="file" id="batchFileInput" style="display: none;" multiple accept=".pdf,.txt,.md,.docx,.xlsx,.xls" onchange="uploadBatchFiles(this.files)">
+
+                                    <div id="batchUploadResult" class="mt-3"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card mt-4">
+                        <div class="card-header">
+                            <h5 class="mb-0">上传说明</h5>
+                        </div>
+                        <div class="card-body">
+                            <ul>
+                                <li>上传的文件会自动进行文本提取和向量化处理</li>
+                                <li>处理完成后即可在问答中使用文档内容</li>
+                                <li>支持的最大文件大小：50MB</li>
+                                <li>建议将长文档拆分为多个小文件上传</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 文件管理标签页 -->
+                <div id="filesTab" class="tab-content" style="display: none;">
+                    <h3 class="mb-4"><i class="bi bi-folder text-primary"></i> 文件管理</h3>
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">已上传文件</h5>
+                            <button class="btn btn-sm btn-outline-primary" onclick="loadFiles()">
+                                <i class="bi bi-arrow-clockwise"></i> 刷新
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <div id="filesList" class="mb-3">
+                                <p>正在加载文件列表...</p>
+                            </div>
+                            <div class="alert alert-warning">
+                                <i class="bi bi-exclamation-triangle"></i> 删除文件会同时删除对应的向量数据
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 模型管理标签页 -->
+                <div id="modelsTab" class="tab-content" style="display: none;">
+                    <h3 class="mb-4"><i class="bi bi-cpu text-primary"></i> 模型管理</h3>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="mb-0">LLM模型</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div id="llmModelsList">
+                                        <p>正在加载模型列表...</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="mb-0">嵌入模型</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div id="embeddingModelsList">
+                                        <p>正在加载嵌入模型列表...</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card mt-4">
+                        <div class="card-header">
+                            <h5 class="mb-0">模型信息</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row" id="modelInfo">
+                                <div class="col-md-6">
+                                    <p><strong>当前LLM模型：</strong> <span id="currentLlm">加载中...</span></p>
+                                    <p><strong>当前嵌入模型：</strong> <span id="currentEmbedding">加载中...</span></p>
+                                </div>
+                                <div class="col-md-6">
+                                    <p><strong>使用设备：</strong> <span id="deviceInfo">加载中...</span></p>
+                                    <button class="btn btn-sm btn-outline-primary mt-2" onclick="loadModels()">
+                                        <i class="bi bi-arrow-clockwise"></i> 刷新模型列表
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 系统状态标签页 -->
+                <div id="statusTab" class="tab-content" style="display: none;">
+                    <h3 class="mb-4"><i class="bi bi-speedometer2 text-primary"></i> 系统状态</h3>
+
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="stat-card">
+                                <i class="bi bi-file-text"></i>
+                                <div class="number" id="docCount">0</div>
+                                <div class="label">文档数量</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="stat-card">
+                                <i class="bi bi-database"></i>
+                                <div class="number" id="vectorCount">0</div>
+                                <div class="label">向量数量</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="stat-card">
+                                <i class="bi bi-cpu"></i>
+                                <div class="number" id="modelCount">0</div>
+                                <div class="label">可用模型</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="stat-card">
+                                <i class="bi bi-clock-history"></i>
+                                <div class="number" id="historyCount">0</div>
+                                <div class="label">查询历史</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card mt-4">
+                        <div class="card-header">
+                            <h5 class="mb-0">详细状态信息</h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="detailedStatus">
+                                <p>正在加载状态信息...</p>
+                            </div>
+                            <button class="btn btn-primary" onclick="loadStatus()">
+                                <i class="bi bi-arrow-clockwise"></i> 刷新状态
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 查询历史标签页 -->
+                <div id="historyTab" class="tab-content" style="display: none;">
+                    <h3 class="mb-4"><i class="bi bi-clock-history text-primary"></i> 查询历史</h3>
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">最近的查询</h5>
+                            <button class="btn btn-sm btn-outline-danger" onclick="clearHistory()">
+                                <i class="bi bi-trash"></i> 清空历史
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <div id="historyList">
+                                <p>正在加载历史记录...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 消息提示框 -->
+    <div id="toastContainer" class="position-fixed bottom-0 end-0 p-3" style="z-index: 11"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // 全局变量
+        let currentModel = '';
+        let chatHistory = [];
+
+        // 页面加载完成后执行
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('页面加载完成，开始初始化...');
+
+            // 首先加载系统信息
+            loadSystemInfo();
+
+            // 加载其他数据（不再加载模型列表到下拉菜单）
+            loadFiles();
+            loadStatus();
+            loadHistory();
+
+            // 设置拖放事件
+            setupDragAndDrop();
+
+            console.log('初始化完成');
+        });
+
+        // 显示标签页
+        function showTab(tabName) {
+            console.log('切换到标签页:', tabName);
+
+            // 隐藏所有标签页
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.style.display = 'none';
+            });
+
+            // 显示选中的标签页
+            document.getElementById(tabName + 'Tab').style.display = 'block';
+
+            // 更新侧边栏活动状态
+            document.querySelectorAll('.sidebar .nav-link').forEach(link => {
+                link.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            // 刷新对应标签页的数据
+            if (tabName === 'files') {
+                loadFiles();
+            } else if (tabName === 'models') {
+                // 切换到模型管理标签页时，加载详细的模型列表
+                loadDetailedModels();
+            } else if (tabName === 'status') {
+                loadStatus();
+            } else if (tabName === 'history') {
+                loadHistory();
+            }
+
+            console.log('标签页切换完成');
+        }
+
+        // 显示消息提示
+        function showToast(message, type = 'info') {
+            const toastId = 'toast-' + Date.now();
+            const bgColor = type === 'success' ? 'bg-success' :
+                           type === 'error' ? 'bg-danger' :
+                           type === 'warning' ? 'bg-warning' : 'bg-info';
+
+            const toastHTML = `
+                <div id="${toastId}" class="toast align-items-center text-white ${bgColor} border-0" role="alert">
+                    <div class="d-flex">
+                        <div class="toast-body">
+                            ${message}
+                        </div>
+                        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('toastContainer').innerHTML += toastHTML;
+            const toastElement = document.getElementById(toastId);
+            const toast = new bootstrap.Toast(toastElement, { delay: 3000 });
+            toast.show();
+
+            // 移除toast元素
+            toastElement.addEventListener('hidden.bs.toast', function () {
+                this.remove();
+            });
+
+            console.log('显示Toast消息:', message);
+        }
+
+        // 测试模型选择功能
+        async function testModelSelection() {
+            const modelSelect = document.getElementById('modelSelect');
+            if (!modelSelect) {
+                alert('找不到模型选择下拉菜单');
+                return;
+            }
+
+            const selectedValue = modelSelect.value;
+            const selectedText = modelSelect.options[modelSelect.selectedIndex].text;
+
+            console.log('模型选择测试:');
+            console.log('  选中值:', selectedValue);
+            console.log('  选中文本:', selectedText);
+
+            if (selectedValue) {
+                // 测试API调用
+                try {
+                    const testQuestion = "这是一个测试问题，请回答'测试成功'";
+                    const response = await fetch('/api/query', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json; charset=utf-8',
+                        },
+                        body: JSON.stringify({
+                            question: testQuestion,
+                            k: 2,
+                            score_threshold: 0.3,
+                            model_key: selectedValue
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        alert(`测试成功！\n使用的模型: ${data.model_used}\n回答: ${data.answer.substring(0, 50)}...`);
+                        console.log('测试响应:', data);
+                    } else {
+                        alert(`测试失败: ${data.error}`);
+                    }
+                } catch (error) {
+                    alert(`测试请求失败: ${error.message}`);
+                }
+            } else {
+                alert('请先选择一个模型');
+            }
+        }
+
+        // 加载系统信息
+        async function loadSystemInfo() {
+            console.log('🔍 开始加载系统信息...');
+
+            try {
+                const response = await fetch('/api/status');
+                console.log('📥 响应状态:', response.status);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP错误: ${response.status}`);
+                }
+
+                const data = await response.json();
+                console.log('📥 收到系统信息响应:', data);
+
+                if (data && data.success && data.data) {
+                    const info = data.data;
+                    const systemInfoDiv = document.getElementById('systemInfo');
+
+                    const html = `
+                        <p class="mb-1"><i class="bi bi-check-circle-fill text-success"></i> 状态: 运行正常</p>
+                        <p class="mb-1"><i class="bi bi-cpu"></i> LLM: ${info.models?.llm || '未知'}</p>
+                        <p class="mb-1"><i class="bi bi-hdd"></i> 嵌入: ${info.models?.embedding || '未知'}</p>
+                        <p class="mb-1"><i class="bi bi-files"></i> 文档: ${info.files?.count || 0} 个</p>
+                        <p class="mb-1"><i class="bi bi-clock"></i> 时间: ${info.timestamp ? new Date(info.timestamp).toLocaleTimeString() : '未知'}</p>
+                    `;
+
+                    systemInfoDiv.innerHTML = html;
+                    console.log('✅ 系统信息加载成功，当前模型:', info.models?.llm);
+
+                    // 同时更新当前模型显示
+                    document.getElementById('currentLlm').textContent = info.models?.llm || '未知';
+                    document.getElementById('currentEmbedding').textContent = info.models?.embedding || '未知';
+
+                } else if (data && data.detail) {
+                    console.error('❌ API返回错误:', data.detail);
+                    showToast('加载系统信息失败: ' + data.detail, 'error');
+                } else {
+                    console.error('❌ API返回格式错误:', data);
+                    showToast('加载系统信息失败: 返回数据格式错误', 'error');
+                }
+            } catch (error) {
+                console.error('❌ 加载系统信息失败:', error);
+                showToast('加载系统信息失败: ' + error.message, 'error');
+            }
+        }
+
+        // 提问函数
+        async function askQuestion() {
+            const questionInput = document.getElementById('questionInput');
+            const question = questionInput.value.trim();
+
+            if (!question) {
+                showToast('请输入问题', 'warning');
+                return;
+            }
+
+            // 添加用户消息到聊天框
+            addMessageToChat(question, 'user');
+            questionInput.value = '';
+
+            // 显示加载状态
+            addMessageToChat('正在思考中...', 'assistant', true);
+
+            // 获取参数（不再获取模型选择）
+            const k = document.getElementById('kInput').value;
+
+            console.log('发送查询请求:', {
+                question: question,
+                k: k
+            });
+
+            // 发送请求
+            try {
+                const requestData = {
+                    question: question,
+                    k: parseInt(k),
+                    score_threshold: 0.3,
+                    include_sources: true
+                };
+
+                const response = await fetch('/api/query', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8',
+                    },
+                    body: JSON.stringify(requestData)
+                });
+
+                const data = await response.json();
+
+                // 移除加载消息
+                removeLoadingMessage();
+
+                if (data.success) {
+                    // 添加助手回答
+                    addMessageToChat(data.answer, 'assistant');
+
+                    // 显示来源
+                    if (data.sources && data.sources.length > 0) {
+                        showSources(data.sources);
+                    }
+
+                    // 添加到历史记录
+                    chatHistory.push({
+                        question: data.question,
+                        answer: data.answer,
+                        timestamp: new Date().toLocaleString(),
+                        model: data.model_used
+                    });
+
+                    showToast('回答生成成功', 'success');
+                    console.log('查询成功，使用的模型:', data.model_used);
+                } else {
+                    addMessageToChat('抱歉，处理问题时出现了错误：' + data.error, 'assistant');
+                    showToast('处理失败: ' + data.error, 'error');
+                    console.error('查询失败:', data.error);
+                }
+            } catch (error) {
+                removeLoadingMessage();
+                addMessageToChat('网络请求失败，请检查连接', 'assistant');
+                showToast('网络请求失败: ' + error.message, 'error');
+                console.error('提问失败:', error);
+            }
+        }
+
+        // 添加消息到聊天框
+        function addMessageToChat(message, type = 'user', isLoading = false) {
+            const chatContainer = document.getElementById('chatContainer');
+            const messageClass = type === 'user' ? 'user-message' : 'assistant-message';
+            const messageId = isLoading ? 'loading-message' : 'message-' + Date.now();
+
+            const messageHTML = `
+                <div id="${messageId}" class="chat-message ${messageClass}">
+                    ${message}
+                    ${!isLoading ? `<div class="message-time">${new Date().toLocaleTimeString()}</div>` : ''}
+                </div>
+            `;
+
+            chatContainer.innerHTML += messageHTML;
+
+            // 滚动到底部
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+
+            console.log('添加消息到聊天框:', type, isLoading ? '(加载中)' : '');
+        }
+
+        // 移除加载消息
+        function removeLoadingMessage() {
+            const loadingMessage = document.getElementById('loading-message');
+            if (loadingMessage) {
+                loadingMessage.remove();
+                console.log('移除加载消息');
+            }
+        }
+
+        // 显示来源信息
+        function showSources(sources) {
+            const sourcesSection = document.getElementById('sourcesSection');
+            const sourcesList = document.getElementById('sourcesList');
+
+            sourcesSection.style.display = 'block';
+            sourcesList.innerHTML = '';
+
+            sources.forEach((source, index) => {
+                const sourceHTML = `
+                    <div class="source-item">
+                        <div class="d-flex justify-content-between">
+                            <strong>来源 ${index + 1}</strong>
+                            <span class="badge bg-primary">相似度: ${source.score.toFixed(3)}</span>
+                        </div>
+                        <div class="small text-muted mb-2">${source.source_info}</div>
+                        <div>${source.content}</div>
+                    </div>
+                `;
+
+                sourcesList.innerHTML += sourceHTML;
+            });
+
+            console.log('显示来源信息，数量:', sources.length);
+        }
+
+        // 更新系统信息中的模型显示
+        function updateSystemInfoWithModel(modelName) {
+            const systemInfoDiv = document.getElementById('systemInfo');
+            if (systemInfoDiv) {
+                // 查找并更新LLM信息
+                const llmInfo = systemInfoDiv.querySelector('p:nth-child(2)'); // 第二个p标签是LLM信息
+                if (llmInfo) {
+                    llmInfo.innerHTML = `<i class="bi bi-cpu"></i> LLM: ${modelName}`;
+                }
+            }
+        }
+
+        // 加载模型列表到下拉菜单（智能问答标签页用）
+        async function loadModelsToSelect() {
+            console.log('开始加载模型列表到下拉菜单...');
+
+            try {
+                const response = await fetch('/api/models');
+                console.log('API响应状态:', response.status);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP错误: ${response.status}`);
+                }
+
+                const data = await response.json();
+                console.log('API响应数据:', data);
+
+                if (data.success) {
+                    const modelSelect = document.getElementById('modelSelect');
+                    if (modelSelect) {
+                        // 清空现有选项
+                        modelSelect.innerHTML = '<option value="">使用默认模型</option>';
+
+                        // 添加所有可用的LLM模型
+                        if (data.llm_models && data.llm_models.length > 0) {
+                            data.llm_models.forEach(model => {
+                                const option = document.createElement('option');
+                                option.value = model.key;
+                                option.textContent = `${model.key} ${model.is_current ? '(当前)' : ''}`;
+
+                                // 如果这是当前模型，设置为选中
+                                if (model.is_current) {
+                                    option.selected = true;
+                                }
+
+                                modelSelect.appendChild(option);
+                            });
+                            console.log('模型列表已加载到下拉菜单，数量:', data.llm_models.length);
+                        } else {
+                            console.warn('没有找到可用的LLM模型');
+                            // 添加一个默认选项
+                            const option = document.createElement('option');
+                            option.value = "local-qwen-0.6b";
+                            option.textContent = "本地千问0.6B模型";
+                            modelSelect.appendChild(option);
+                        }
+
+                        // 添加change事件监听器
+                        modelSelect.addEventListener('change', function() {
+                            console.log('模型选择变化:', this.value);
+                            if (this.value) {
+                                showToast(`已选择模型: ${this.value}`, 'info');
+                            }
+                        });
+                    } else {
+                        console.error('找不到 modelSelect 元素');
+                    }
+                } else {
+                    console.error('API返回失败:', data.error);
+                    showToast('加载模型列表失败: ' + data.error, 'error');
+                }
+            } catch (error) {
+                console.error('加载模型列表失败:', error);
+                showToast('加载模型列表失败: ' + error.message, 'error');
+
+                // 设置默认选项作为后备
+                const modelSelect = document.getElementById('modelSelect');
+                if (modelSelect) {
+                    modelSelect.innerHTML = `
+                        <option value="">使用默认模型</option>
+                        <option value="local-qwen-0.6b">本地千问0.6B模型</option>
+                    `;
+                    console.log('使用默认模型作为后备');
+                }
+            }
+        }
+
+        // 加载详细的模型列表（模型管理标签页用）
+        async function loadDetailedModels() {
+            console.log('开始加载详细的模型列表...');
+
+            try {
+                const response = await fetch('/api/models');
+                const data = await response.json();
+
+                if (data.success) {
+                    // 更新当前模型信息
+                    document.getElementById('currentLlm').textContent = data.current_llm || '未知';
+                    document.getElementById('currentEmbedding').textContent = data.current_embedding || '未知';
+                    document.getElementById('deviceInfo').textContent = 'GPU优先';
+                    document.getElementById('modelCount').textContent =
+                        (data.llm_models ? data.llm_models.length : 0) +
+                        (data.embedding_models ? data.embedding_models.length : 0);
+
+                    // 显示LLM模型卡片
+                    const llmModelsList = document.getElementById('llmModelsList');
+                    if (llmModelsList) {
+                        llmModelsList.innerHTML = '';
+
+                        if (data.llm_models && data.llm_models.length > 0) {
+                            data.llm_models.forEach(model => {
+                                const modelHTML = `
+                                    <div class="model-card ${model.is_current ? 'selected' : ''}" onclick="switchModel('${model.key}')">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <strong>${model.key}</strong>
+                                                ${model.is_current ? '<span class="badge-model ms-2">当前使用</span>' : ''}
+                                            </div>
+                                            <i class="bi bi-chevron-right"></i>
+                                        </div>
+                                        <div class="small text-muted mt-2">
+                                            <div>类型: ${model.type === 'local' ? '本地模型' : 'API模型'}</div>
+                                            <div>描述: ${model.description || '无描述'}</div>
+                                        </div>
+                                    </div>
+                                `;
+                                llmModelsList.innerHTML += modelHTML;
+                            });
+                        } else {
+                            llmModelsList.innerHTML = '<p class="text-muted">没有找到可用的LLM模型</p>';
+                        }
+                    }
+
+                    // 显示嵌入模型卡片
+                    const embeddingModelsList = document.getElementById('embeddingModelsList');
+                    if (embeddingModelsList) {
+                        embeddingModelsList.innerHTML = '';
+
+                        if (data.embedding_models && data.embedding_models.length > 0) {
+                            data.embedding_models.forEach(model => {
+                                const modelHTML = `
+                                    <div class="model-card ${model.is_current ? 'selected' : ''}" onclick="switchEmbeddingModel('${model.key}')">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <strong>${model.key}</strong>
+                                                ${model.is_current ? '<span class="badge-model ms-2">当前使用</span>' : ''}
+                                            </div>
+                                            <i class="bi bi-chevron-right"></i>
+                                        </div>
+                                        <div class="small text-muted mt-2">
+                                            <div>类型: ${model.type === 'local' ? '本地模型' : 'API模型'}</div>
+                                            <div>描述: ${model.description || '无描述'}</div>
+                                        </div>
+                                    </div>
+                                `;
+                                embeddingModelsList.innerHTML += modelHTML;
+                            });
+                        } else {
+                            embeddingModelsList.innerHTML = '<p class="text-muted">没有找到可用的嵌入模型</p>';
+                        }
+                    }
+
+                    console.log('详细的模型列表加载完成');
+                }
+            } catch (error) {
+                console.error('加载详细的模型列表失败:', error);
+                showToast('加载模型列表失败: ' + error.message, 'error');
+
+                // 设置默认信息
+                document.getElementById('currentLlm').textContent = 'local-qwen-0.6b';
+                document.getElementById('currentEmbedding').textContent = 'qwen3-embedding-0.6b';
+                document.getElementById('deviceInfo').textContent = 'GPU优先';
+                document.getElementById('modelCount').textContent = '1';
+
+                const llmModelsList = document.getElementById('llmModelsList');
+                if (llmModelsList) {
+                    llmModelsList.innerHTML = `
+                        <div class="model-card selected" onclick="switchModel('local-qwen-0.6b')">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <strong>local-qwen-0.6b</strong>
+                                    <span class="badge-model ms-2">当前使用</span>
+                                </div>
+                                <i class="bi bi-chevron-right"></i>
+                            </div>
+                            <div class="small text-muted mt-2">
+                                <div>类型: 本地模型</div>
+                                <div>描述: 本地千问0.6B模型</div>
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+        }
+
+        // 切换LLM模型
+        async function switchModel(modelKey) {
+            console.log('🔄 开始切换模型到:', modelKey);
+
+            if (confirm(`确定要切换到模型 ${modelKey} 吗？`)) {
+                try {
+                    console.log('📤 发送模型切换请求...');
+
+                    const response = await fetch('/api/switch-model', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json; charset=utf-8',
+                        },
+                        body: JSON.stringify({ model_key: modelKey })
+                    });
+
+                    const data = await response.json();
+                    console.log('📥 收到模型切换响应:', data);
+
+                    if (data.success) {
+                        showToast(data.message, 'success');
+                        console.log('✅ 模型切换成功:', data.message);
+
+                        // 刷新所有相关的UI组件
+                        console.log('🔄 刷新UI组件...');
+
+                        // 1. 刷新下拉菜单
+                        await loadModelsToSelect();
+
+                        // 2. 刷新详细的模型列表（如果用户在模型管理页面）
+                        if (document.getElementById('modelsTab').style.display === 'block') {
+                            await loadDetailedModels();
+                        }
+
+                        // 3. 刷新系统信息（侧边栏）
+                        await loadSystemInfo();
+
+                        // 4. 刷新系统状态页面（如果显示）
+                        if (document.getElementById('statusTab').style.display === 'block') {
+                            await loadStatus();
+                        }
+
+                        // 5. 立即测试新模型是否可用
+                        console.log('🔍 测试新模型是否可用...');
+                        try {
+                            const testResponse = await fetch('/api/query', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json; charset=utf-8',
+                                },
+                                body: JSON.stringify({
+                                    question: "测试",
+                                    k: 1,
+                                    score_threshold: 0.3,
+                                    model_key: modelKey
+                                })
+                            });
+                            const testData = await testResponse.json();
+                            if (testData.success) {
+                                console.log('✅ 新模型测试成功，使用的模型:', testData.model_used);
+                            } else {
+                                console.warn('⚠️ 新模型测试返回失败:', testData.error);
+                            }
+                        } catch (testError) {
+                            console.error('❌ 新模型测试失败:', testError);
+                        }
+
+                    } else {
+                        showToast('切换失败: ' + data.error, 'error');
+                        console.error('❌ 模型切换失败:', data.error);
+                    }
+                } catch (error) {
+                    showToast('切换模型失败: ' + error.message, 'error');
+                    console.error('❌ 切换模型请求失败:', error);
+                }
+            }
+        }
+
+        // 切换嵌入模型
+        async function switchEmbeddingModel(modelKey) {
+            if (confirm(`确定要切换到嵌入模型 ${modelKey} 吗？切换后可能需要重新处理文档。`)) {
+                console.log('开始切换嵌入模型到:', modelKey);
+
+                try {
+                    const response = await fetch('/api/switch-embedding', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json; charset=utf-8',
+                        },
+                        body: JSON.stringify({ model_key: modelKey })
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        showToast(data.message, 'success');
+                        console.log('嵌入模型切换成功:', data.message);
+
+                        // 刷新模型列表
+                        loadModelsToSelect();
+                        loadDetailedModels();
+                        loadSystemInfo();
+                    } else {
+                        showToast('切换失败: ' + data.error, 'error');
+                        console.error('嵌入模型切换失败:', data.error);
+                    }
+                } catch (error) {
+                    showToast('切换嵌入模型失败: ' + error.message, 'error');
+                    console.error('切换嵌入模型失败:', error);
+                }
+            }
+        }
+
+        // 设置拖放上传
+        function setupDragAndDrop() {
+            const singleUploadArea = document.getElementById('singleUploadArea');
+            const batchUploadArea = document.getElementById('batchUploadArea');
+
+            // 单文件拖放
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                singleUploadArea.addEventListener(eventName, preventDefaults, false);
+            });
+
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+
+            ['dragenter', 'dragover'].forEach(eventName => {
+                singleUploadArea.addEventListener(eventName, () => {
+                    singleUploadArea.classList.add('dragover');
+                }, false);
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                singleUploadArea.addEventListener(eventName, () => {
+                    singleUploadArea.classList.remove('dragover');
+                }, false);
+            });
+
+            singleUploadArea.addEventListener('drop', (e) => {
+                const file = e.dataTransfer.files[0];
+                uploadSingleFile(file);
+            }, false);
+
+            // 批量文件拖放（类似处理）
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                batchUploadArea.addEventListener(eventName, preventDefaults, false);
+            });
+
+            ['dragenter', 'dragover'].forEach(eventName => {
+                batchUploadArea.addEventListener(eventName, () => {
+                    batchUploadArea.classList.add('dragover');
+                }, false);
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                batchUploadArea.addEventListener(eventName, () => {
+                    batchUploadArea.classList.remove('dragover');
+                }, false);
+            });
+
+            batchUploadArea.addEventListener('drop', (e) => {
+                const files = e.dataTransfer.files;
+                uploadBatchFiles(files);
+            }, false);
+
+            console.log('拖放上传设置完成');
+        }
+
+        // 上传单个文件
+        async function uploadSingleFile(file) {
+            if (!file) return;
+
+            // 检查文件类型
+            const allowedTypes = ['application/pdf', 'text/plain', 'text/markdown',
+                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'];
+            const fileExtension = file.name.split('.').pop().toLowerCase();
+            const allowedExtensions = ['pdf', 'txt', 'md', 'markdown', 'docx', 'xlsx', 'xls'];
+
+            if (!allowedTypes.includes(file.type) && !allowedExtensions.includes(fileExtension)) {
+                showToast('不支持的文件格式，请上传PDF、TXT或MD文件', 'error');
+                return;
+            }
+
+            // 检查文件大小（50MB限制）
+            if (file.size > 50 * 1024 * 1024) {
+                showToast('文件太大，请上传小于50MB的文件', 'error');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const uploadResultDiv = document.getElementById('uploadResult');
+            const progressBar = document.getElementById('uploadProgress');
+            const progressBarInner = progressBar.querySelector('.progress-bar');
+
+            uploadResultDiv.innerHTML = '';
+            progressBar.style.display = 'block';
+            progressBarInner.style.width = '0%';
+            progressBarInner.textContent = '准备上传...';
+
+            try {
+                const response = await fetch('/api/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    progressBarInner.style.width = '100%';
+                    progressBarInner.textContent = '上传完成';
+
+                    const resultHTML = `
+                        <div class="alert alert-success">
+                            <i class="bi bi-check-circle"></i> ${data.message}
+                            <div class="small mt-2">
+                                文件大小: ${(data.file_size / 1024 / 1024).toFixed(2)} MB<br>
+                                文档块数: ${data.document_count}<br>
+                                处理时间: ${data.processing_time.toFixed(2)}秒
+                            </div>
+                        </div>
+                    `;
+
+                    uploadResultDiv.innerHTML = resultHTML;
+                    showToast('文件上传成功', 'success');
+
+                    // 刷新文件列表和系统信息
+                    setTimeout(() => {
+                        loadFiles();
+                        loadSystemInfo();
+                    }, 1000);
+                } else {
+                    progressBarInner.style.width = '100%';
+                    progressBarInner.style.backgroundColor = '#dc3545';
+                    progressBarInner.textContent = '上传失败';
+
+                    uploadResultDiv.innerHTML = `
+                        <div class="alert alert-danger">
+                            <i class="bi bi-x-circle"></i> 上传失败: ${data.error}
+                        </div>
+                    `;
+
+                    showToast('文件上传失败: ' + data.error, 'error');
+                }
+
+                // 3秒后隐藏进度条
+                setTimeout(() => {
+                    progressBar.style.display = 'none';
+                }, 3000);
+            } catch (error) {
+                uploadResultDiv.innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="bi bi-x-circle"></i> 上传失败: ${error.message}
+                    </div>
+                `;
+                showToast('上传失败: ' + error.message, 'error');
+                progressBar.style.display = 'none';
+            }
+        }
+
+        // 批量上传文件
+        async function uploadBatchFiles(files) {
+            if (!files || files.length === 0) return;
+
+            const batchUploadResultDiv = document.getElementById('batchUploadResult');
+            batchUploadResultDiv.innerHTML = `
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i> 正在处理 ${files.length} 个文件...
+                </div>
+            `;
+
+            let successCount = 0;
+            let failCount = 0;
+
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+
+                // 检查文件类型
+                const allowedExtensions = ['pdf', 'txt', 'md', 'markdown', 'docx', 'xlsx', 'xls'];
+                const fileExtension = file.name.split('.').pop().toLowerCase();
+
+                if (!allowedExtensions.includes(fileExtension)) {
+                    failCount++;
+                    continue;
+                }
+
+                const formData = new FormData();
+                formData.append('file', file);
+
+                try {
+                    const response = await fetch('/api/upload', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        successCount++;
+                    } else {
+                        failCount++;
+                    }
+                } catch (error) {
+                    failCount++;
+                }
+            }
+
+            const resultHTML = `
+                <div class="alert ${successCount > 0 ? 'alert-success' : 'alert-warning'}">
+                    <i class="bi ${successCount > 0 ? 'bi-check-circle' : 'bi-exclamation-triangle'}"></i>
+                    批量上传完成<br>
+                    <div class="small mt-2">
+                        成功: ${successCount} 个文件<br>
+                        失败: ${failCount} 个文件
+                    </div>
+                </div>
+            `;
+
+            batchUploadResultDiv.innerHTML = resultHTML;
+
+            if (successCount > 0) {
+                showToast(`批量上传完成，成功 ${successCount} 个文件`, 'success');
+
+                // 刷新文件列表和系统信息
+                setTimeout(() => {
+                    loadFiles();
+                    loadSystemInfo();
+                }, 1000);
+            } else {
+                showToast('所有文件上传失败', 'error');
+            }
+        }
+
+        // 加载文件列表
+        async function loadFiles() {
+            try {
+                const response = await fetch('/api/files');
+                const data = await response.json();
+
+                if (data.success) {
+                    const filesListDiv = document.getElementById('filesList');
+
+                    if (data.count === 0) {
+                        filesListDiv.innerHTML = '<p class="text-muted">暂无上传的文件</p>';
+                        return;
+                    }
+
+                    let html = '';
+                    data.details.forEach(file => {
+                        const sizeMB = (file.size / 1024 / 1024).toFixed(2);
+                        const sizeKB = (file.size / 1024).toFixed(2);
+                        const displaySize = file.size > 1024 * 1024 ? `${sizeMB} MB` : `${sizeKB} KB`;
+
+                        html += `
+                            <div class="file-card mb-3">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="mb-1">
+                                            <i class="bi bi-file-earmark-${file.type === 'pdf' ? 'pdf' : file.type === 'txt' ? 'text' : 'markdown'}"></i>
+                                            ${file.name}
+                                        </h6>
+                                        <div class="small text-muted">
+                                            类型: ${file.type.toUpperCase()} | 大小: ${displaySize} | 修改时间: ${file.modified}
+                                        </div>
+                                    </div>
+                                    <button class="btn btn-sm btn-outline-danger" onclick="deleteFile('${file.name}')">
+                                        <i class="bi bi-trash"></i> 删除
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                    });
+
+                    filesListDiv.innerHTML = html;
+                    document.getElementById('docCount').textContent = data.count;
+                }
+            } catch (error) {
+                console.error('加载文件列表失败:', error);
+                showToast('加载文件列表失败', 'error');
+            }
+        }
+
+        // 删除文件
+        async function deleteFile(filename) {
+            if (confirm(`确定要删除文件 "${filename}" 吗？此操作不可恢复。`)) {
+                try {
+                    const response = await fetch(`/api/files/${encodeURIComponent(filename)}`, {
+                        method: 'DELETE'
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        showToast(data.message, 'success');
+                        loadFiles(); // 刷新文件列表
+                        loadSystemInfo(); // 刷新系统信息
+                    } else {
+                        showToast('删除失败: ' + data.error, 'error');
+                    }
+                } catch (error) {
+                    showToast('删除文件失败: ' + error.message, 'error');
+                }
+            }
+        }
+
+        // 加载系统状态
+        async function loadStatus() {
+            try {
+                const response = await fetch('/api/status');
+                const data = await response.json();
+
+                if (data.success) {
+                    const status = data.data;
+                    const detailedStatusDiv = document.getElementById('detailedStatus');
+
+                    // 更新统计卡片
+                    document.getElementById('vectorCount').textContent =
+                        status.vector_store.document_count || 0;
+
+                    // 更新详细状态
+                    const html = `
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6>模型配置</h6>
+                                <ul class="list-unstyled">
+                                    <li><strong>LLM模型:</strong> ${status.models.llm}</li>
+                                    <li><strong>嵌入模型:</strong> ${status.models.embedding}</li>
+                                    <li><strong>使用设备:</strong> ${status.device}</li>
+                                    <li><strong>模型类型:</strong> ${status.models.llm_type}</li>
+                                </ul>
+
+                                <h6 class="mt-4">RAG配置</h6>
+                                <ul class="list-unstyled">
+                                    <li><strong>分块大小:</strong> ${status.config.chunk_size} 字符</li>
+                                    <li><strong>分块重叠:</strong> ${status.config.chunk_overlap} 字符</li>
+                                    <li><strong>返回数量:</strong> ${status.config.similarity_top_k} 个</li>
+                                    <li><strong>相似度阈值:</strong> ${status.config.score_threshold}</li>
+                                </ul>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>向量存储</h6>
+                                <ul class="list-unstyled">
+                                    <li><strong>集合名称:</strong> ${status.vector_store.collection_name || '未知'}</li>
+                                    <li><strong>文档数量:</strong> ${status.vector_store.document_count || 0}</li>
+                                    <li><strong>存储状态:</strong> ${status.vector_store.status || '未知'}</li>
+                                    <li><strong>存储目录:</strong> ${status.vector_store.persist_directory || '未知'}</li>
+                                </ul>
+
+                                <h6 class="mt-4">文件状态</h6>
+                                <ul class="list-unstyled">
+                                    <li><strong>文件总数:</strong> ${status.files.count} 个</li>
+                                    <li><strong>最后更新时间:</strong> ${status.timestamp}</li>
+                                </ul>
+                            </div>
+                        </div>
+                    `;
+
+                    detailedStatusDiv.innerHTML = html;
+                }
+            } catch (error) {
+                console.error('加载状态信息失败:', error);
+                showToast('加载状态信息失败', 'error');
+            }
+        }
+
+        // 加载查询历史
+        async function loadHistory() {
+            try {
+                const response = await fetch('/api/history?limit=20');
+                const data = await response.json();
+
+                if (data.success) {
+                    const historyListDiv = document.getElementById('historyList');
+                    document.getElementById('historyCount').textContent = data.total;
+
+                    if (data.count === 0) {
+                        historyListDiv.innerHTML = '<p class="text-muted">暂无查询历史</p>';
+                        return;
+                    }
+
+                    let html = '';
+                    data.history.forEach((item, index) => {
+                        html += `
+                            <div class="file-card mb-3">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div style="flex: 1;">
+                                        <h6 class="mb-1">${item.question}</h6>
+                                        <div class="small text-muted">
+                                            <i class="bi bi-clock"></i> ${item.timestamp}
+                                            ${item.model ? ` | 模型: ${item.model}` : ''}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+
+                    historyListDiv.innerHTML = html;
+                }
+            } catch (error) {
+                console.error('加载历史记录失败:', error);
+                showToast('加载历史记录失败', 'error');
+            }
+        }
+
+        // 清空查询历史
+        async function clearHistory() {
+            if (confirm('确定要清空所有查询历史吗？此操作不可恢复。')) {
+                try {
+                    const response = await fetch('/api/history', {
+                        method: 'DELETE'
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        showToast(data.message, 'success');
+                        loadHistory(); // 刷新历史记录
+                    } else {
+                        showToast('清空历史失败: ' + data.error, 'error');
+                    }
+                } catch (error) {
+                    showToast('清空历史失败: ' + error.message, 'error');
+                }
+            }
+        }
+
+        // 重新处理所有文件
+        async function reprocessFiles() {
+            if (confirm('确定要重新处理所有文件吗？这可能需要一些时间。')) {
+                try {
+                    const response = await fetch('/api/reprocess', {
+                        method: 'POST'
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        showToast(data.message, 'success');
+                        loadStatus(); // 刷新状态
+                        loadSystemInfo(); // 刷新系统信息
+                    } else {
+                        showToast('重新处理失败: ' + data.error, 'error');
+                    }
+                } catch (error) {
+                    showToast('重新处理失败: ' + error.message, 'error');
+                }
+            }
+        }
+    </script>
+</body>
+</html>
