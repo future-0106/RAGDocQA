@@ -1,23 +1,21 @@
 """
-Agent协调器 - 多Agent统一入口
+Agent协调器 - Agentic RAG版本
+使用 LangChain Agent 实现多轮对话和自动工具调用
 """
 from typing import Dict, Any, Optional
+from langchain.agents import initialize_agent, AgentType
 from agent.tools import create_tools, LegalTools
-from agent.agents import (
-    LegalConsultationAgent,
-    ContractReviewAgent,
-    DocumentGeneratorAgent,
-    RiskAssessmentAgent
-)
 from agent.delilegal_client import create_deli_client
+from agent import prompts
 
 
 class AgentCoordinator:
-    """多Agent协调器 - 统一入口"""
+    """多Agent协调器 - 统一入口（Agentic RAG）"""
     
-    def __init__(self, llm, use_external_api: bool = True):
+    def __init__(self, llm, use_external_api: bool = True, verbose: bool = False):
         self.llm = llm
         self.use_external_api = use_external_api
+        self.verbose = verbose
         
         deli_client = None
         if use_external_api:
@@ -25,62 +23,65 @@ class AgentCoordinator:
             deli_client = create_deli_client()
         
         print("🔧 初始化法律工具集...")
-        self.tools = create_tools(llm, deli_client)
+        self.tools_instance = LegalTools(llm, deli_client)
+        self.tools_dict = create_tools(llm, deli_client)
+        self.langchain_tools = self.tools_instance.get_langchain_tools()
         
         print("🔧 初始化法律咨询Agent...")
-        self.consultation_agent = LegalConsultationAgent.create(
-            llm, 
-            self.tools
+        self.consultation_agent = initialize_agent(
+            self.langchain_tools,
+            llm,
+            agent=AgentType.CONVERSATIONAL,
+            system_message=prompts.CONSULTATION_SYSTEM_PROMPT,
+            verbose=verbose,
+            max_iterations=5,
+            handle_parsing_errors="抱歉，我遇到了一些问题，请重新描述您的问题。"
         )
         
         print("🔧 初始化合同审查Agent...")
-        self.contract_agent = ContractReviewAgent.create(
+        self.contract_agent = initialize_agent(
+            self.langchain_tools,
             llm,
-            self.tools
+            agent=AgentType.CONVERSATIONAL,
+            system_message=prompts.CONTRACT_REVIEW_SYSTEM_PROMPT,
+            verbose=verbose,
+            max_iterations=5,
+            handle_parsing_errors="抱歉，我遇到了一些问题，请重新提供合同内容。"
         )
         
         print("🔧 初始化文书生成Agent...")
-        self.document_agent = DocumentGeneratorAgent.create(
+        self.document_agent = initialize_agent(
+            self.langchain_tools,
             llm,
-            self.tools
+            agent=AgentType.CONVERSATIONAL,
+            system_message=prompts.DOCUMENT_GENERATION_SYSTEM_PROMPT,
+            verbose=verbose,
+            max_iterations=5,
+            handle_parsing_errors="抱歉，我遇到了一些问题，请重新提供文书类型和事实情况。"
         )
         
         print("🔧 初始化风险评估Agent...")
-        self.risk_agent = RiskAssessmentAgent.create(
+        self.risk_agent = initialize_agent(
+            self.langchain_tools,
             llm,
-            self.tools
+            agent=AgentType.CONVERSATIONAL,
+            system_message=prompts.RISK_ASSESSMENT_SYSTEM_PROMPT,
+            verbose=verbose,
+            max_iterations=5,
+            handle_parsing_errors="抱歉，我遇到了一些问题，请重新提供案件类型和事实。"
         )
         
         print("✅ Agent系统初始化完成")
     
     def process_consultation(self, query: str) -> Dict[str, Any]:
-        """处理法律咨询"""
+        """处理法律咨询 - 使用 Agent"""
         try:
-            law_context = self.tools["search_law"](query)
-            case_context = self.tools["search_case"](query)
-            
-            context = f"""
-## 检索到的法律条文
-{law_context}
-
-## 检索到的类似案例
-{case_context}
-"""
-            
-            from agent import prompts
-            full_prompt = prompts.format_consultation_prompt(query, context)
-            
-            result = self.llm.invoke(full_prompt)
-            answer = result.content if hasattr(result, "content") else str(result)
+            result = self.consultation_agent.run(query)
             
             return {
                 "success": True,
                 "type": "consultation",
-                "answer": answer,
-                "context": {
-                    "law": law_context,
-                    "case": case_context
-                },
+                "answer": result,
                 "agent": "LegalConsultationAgent"
             }
         except Exception as e:
@@ -92,20 +93,16 @@ class AgentCoordinator:
             }
     
     def process_contract_review(self, contract_text: str) -> Dict[str, Any]:
-        """处理合同审查"""
+        """处理合同审查 - 使用 Agent"""
         try:
-            law_context = self.tools["search_law"]("劳动合同法律规定 试用期 加班费 社会保险")
-            
-            from agent import prompts
-            full_prompt = prompts.format_contract_review_prompt(contract_text, law_context)
-            
-            result = self.llm.invoke(full_prompt)
-            review = result.content if hasattr(result, "content") else str(result)
+            result = self.contract_agent.run(
+                f"请审查以下劳动合同，识别风险条款并给出修改建议：\n\n{contract_text}"
+            )
             
             return {
                 "success": True,
                 "type": "contract_review",
-                "review": review,
+                "review": result,
                 "agent": "ContractReviewAgent"
             }
         except Exception as e:
@@ -118,22 +115,16 @@ class AgentCoordinator:
     
     def process_document_generation(self, doctype: str, facts: str, 
                                      legal_basis: str = "") -> Dict[str, Any]:
-        """处理文书生成"""
+        """处理文书生成 - 使用 Agent"""
         try:
-            if not legal_basis:
-                legal_basis = self.tools["search_law"](facts[:200])
-            
-            from agent import prompts
-            full_prompt = prompts.format_document_prompt(doctype, facts, legal_basis)
-            
-            result = self.llm.invoke(full_prompt)
-            document = result.content if hasattr(result, "content") else str(result)
+            input_str = f"{doctype}|{facts}" + (f"|{legal_basis}" if legal_basis else "")
+            result = self.document_agent.run(input_str)
             
             return {
                 "success": True,
                 "type": "document_generation",
                 "doctype": doctype,
-                "document": document,
+                "document": result,
                 "agent": "DocumentGeneratorAgent"
             }
         except Exception as e:
@@ -145,23 +136,16 @@ class AgentCoordinator:
             }
     
     def process_risk_assessment(self, case_type: str, facts: str) -> Dict[str, Any]:
-        """处理风险评估"""
+        """处理风险评估 - 使用 Agent"""
         try:
-            case_context = self.tools["search_case"](facts[:200])
-            law_context = self.tools["search_law"](f"{case_type}法律规定")
-            
-            from agent import prompts
-            full_prompt = prompts.format_risk_assessment_prompt(case_type, facts, 
-                                                               case_context + "\n\n" + law_context)
-            
-            result = self.llm.invoke(full_prompt)
-            assessment = result.content if hasattr(result, "content") else str(result)
+            input_str = f"{case_type}|{facts}"
+            result = self.risk_agent.run(input_str)
             
             return {
                 "success": True,
                 "type": "risk_assessment",
                 "case_type": case_type,
-                "assessment": assessment,
+                "assessment": result,
                 "agent": "RiskAssessmentAgent"
             }
         except Exception as e:
@@ -185,11 +169,11 @@ class AgentCoordinator:
                 "next_action": "contract_review"
             }
         
-        if any(kw in user_input_lower for kw in ["起诉状", "申请书", "写文书", "生成文书", "起草", "仲裁申请"]):
+        if any(kw in user_input_lower for kw in ["起诉状", "申请书", "写文书", "生成文书", "起草", "仲裁申请", "借条", "欠条"]):
             return {
                 "success": True,
                 "type": "need_input",
-                "message": "请提供以下信息：1）文书类型（如仲裁申请书、起诉状）2）事实情况描述",
+                "message": "请提供以下信息：1）文书类型（如仲裁申请书、起诉状、借条）2）事实情况描述",
                 "required_input": "document_info",
                 "next_action": "document_generation"
             }
@@ -205,7 +189,7 @@ class AgentCoordinator:
         
         if any(kw in user_input_lower for kw in ["流程", "怎么仲裁", "如何起诉", "怎么办理", "步骤", "程序"]):
             procedure_type = self._extract_procedure_type(user_input)
-            guide = self.tools["get_procedure_guide"](procedure_type)
+            guide = self.tools_instance.get_procedure_guide(procedure_type)
             return {
                 "success": True,
                 "type": "procedure_guide",
@@ -233,4 +217,4 @@ class AgentCoordinator:
     
     def get_tools(self) -> Dict:
         """获取工具字典"""
-        return self.tools
+        return self.tools_dict
